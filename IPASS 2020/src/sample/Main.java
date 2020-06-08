@@ -12,7 +12,7 @@ public class Main extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception{
         Parent root = FXMLLoader.load(getClass().getResource("sample.fxml"));
-        primaryStage.setTitle("Flocking sim");
+        primaryStage.setTitle("Flocking sim van Lars Schipper");
         primaryStage.setScene(new Scene(root, 1000, 1000));
         primaryStage.show();
     }
