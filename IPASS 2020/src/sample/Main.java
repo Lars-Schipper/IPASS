@@ -6,51 +6,40 @@ import java.util.Random;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
-import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
-import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.input.MouseDragEvent;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
-import javafx.scene.shape.Rectangle;
-import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
 public class Main extends Application {
 
-
-    int aantalBoids = 50;
-    double boidRadius = 10d;
-    double boidMinDistance = boidRadius * 2d + 5;
+    int numBoids = 200;
+    double boidRadius = 5d;
+    double boidMinDistance = boidRadius * 2d + 3;
+    double boidMaxDistance = boidRadius * 2d + 80;
     double initialBaseVelocity = 1d;
-    double velocitiyLimit = 3d;
-    double movemnetToCenter = 0.01;
+    double velocityLimit = 5d;
+    double movementToCenter = 0.0001;
 
-    public List<Boid> boids;
+    List<Boid> boids;
 
     static Random rnd = new Random();
 
-    double sceneWidth = 1024;
+    double sceneWidth = 1524;
     double sceneHeight = 768;
 
     Pane playfield;
 
-    Rectangle rectangle;
-
     @Override
-    public void start(Stage primaryStage) throws Exception{
+    public void start(Stage primaryStage) {
 
         BorderPane root = new BorderPane();
 
         playfield = new Pane();
         playfield.setPrefSize(sceneWidth, sceneHeight);
-
-        //Text infoText = new Text("drag the rectangle and have the flock follow it");
-        //root.setTop(infoText);
 
         root.setCenter(playfield);
 
@@ -58,40 +47,120 @@ public class Main extends Application {
         primaryStage.setScene(scene);
         primaryStage.show();
 
+        // create boids
         createBoids();
 
+        // add boids to scene
         playfield.getChildren().addAll(boids);
 
-        double w = 20;
-        double h = 20;
-        rectangle = new Rectangle(w, h);
-        rectangle.relocate(sceneWidth / 2 - w/ 2, sceneHeight / 4 - h/2);
-        playfield.getChildren().add(rectangle);
+        // animation loop
+        AnimationTimer loop = new AnimationTimer() {
 
-        MouseGestures mg = new MouseGestures();
-        mg.makeDraggable(rectangle);
+            @Override
+            public void handle(long now) {
 
+                boids.forEach(Boid::move);
+                boids.forEach(Boid::updateUI);
 
+            }
+        };
 
-
+        loop.start();
     }
 
-    private void createBoids(){
+    private void createBoids() {
+
         boids = new ArrayList<>();
 
+        // margin from top/left/bottom/right, so we have the boids initially more in the center
         double marginX = sceneWidth / 4;
         double marginY = sceneHeight / 4;
 
-        for(int i = 0; i < aantalBoids; i++){
+        for (int i = 0; i < numBoids; i++) {
+
+            // random position around the center
             double x = rnd.nextDouble() * (sceneWidth - marginX * 2) + marginX;
             double y = rnd.nextDouble() * (sceneHeight - marginY * 2) + marginY;
 
+            // initial random velocity depending on speed
             double v = Math.random() * 4 + initialBaseVelocity;
 
             Boid boid = new Boid(i, x, y, v);
 
             boids.add(boid);
+
         }
+
+    }
+
+    // Rule 1: Boids try to fly towards the centre of mass of neighbouring boids.
+    public Point2D rule1(Boid boid) {
+
+        Point2D pcj = new Point2D(0, 0);
+
+        for( Boid neighbor: boids)  {
+
+            if( boid == neighbor)
+                continue;
+
+            pcj = pcj.add( neighbor.position);
+
+        }
+
+        if( boids.size() > 1) {
+            double div = 1d / (boids.size() - 10);
+            pcj = pcj.multiply( div);
+        }
+
+        pcj = (pcj.subtract(boid.position)).multiply( movementToCenter);
+
+        return pcj;
+    }
+
+    // Rule 2: Boids try to keep a small distance away from other objects (including other boids).
+    public Point2D rule2(Boid boid) {
+
+        Point2D c = new Point2D(0, 0);
+
+        for( Boid neighbor: boids)  {
+
+            if( boid == neighbor)
+                continue;
+
+            double distance = (neighbor.position.subtract(boid.position)).magnitude();
+
+            if( distance < boidMinDistance) {
+                c = c.subtract(neighbor.position.subtract(boid.position));
+
+            }
+
+        }
+
+        return c;
+    }
+
+    // Rule 3: Boids try to match velocity with near boids.
+    public Point2D rule3(Boid boid) {
+
+        Point2D pvj = new Point2D(0, 0);
+
+        for( Boid neighbor: boids)  {
+
+            if( boid == neighbor)
+                continue;
+
+            pvj = pvj.add( neighbor.velocity);
+
+        }
+
+        if( boids.size() > 1) {
+            double div = 1d / (boids.size() - 1);
+            pvj = pvj.multiply( div);
+        }
+
+        pvj = (pvj.subtract(boid.velocity)).multiply(0.0625); // 0.125 = 1/8
+
+        return pvj;
     }
 
     public class Boid extends Circle {
@@ -104,7 +173,7 @@ public class Main extends Application {
         double v;
 
         // random color
-        Color color = Color.BLACK;
+        Color color = randomColor();
 
         public Boid(int id, double x, double y, double v) {
 
@@ -121,39 +190,36 @@ public class Main extends Application {
 
         }
 
-//        public void move() {
-//
-//            Point2D v1 = rule1(this);
-//            Point2D v2 = rule2(this);
-//            Point2D v3 = rule3(this);
-//            Point2D v4 = tendToPlace(this);
-//
-//            velocity = velocity
-//                    .add(v1)
-//                    .add(v2)
-//                    .add(v3)
-//                    .add(v4)
-//            ;
-//
-//            limitVelocity();
-//
-//            position = position.add(velocity);
-//
-//            constrainPosition();
-//        }
+        public void move() {
 
-//        private void limitVelocity() {
-//
-//            double vlim = velocityLimit;
-//
-//            if( velocity.magnitude() > vlim) {
-//                velocity = (velocity.multiply(1d/velocity.magnitude())).multiply( vlim);
-//            }
-//
-//        }
+            Point2D v1 = rule1(this);
+            Point2D v2 = rule2(this);
+            Point2D v3 = rule3(this);
+
+            velocity = velocity
+                    .add(v1)
+                    .add(v2)
+                    .add(v3)
+            ;
+
+            limitVelocity();
+
+            position = position.add(velocity);
+
+            constrainPosition();
+        }
+
+        private void limitVelocity() {
+
+            double vlim = velocityLimit;
+
+            if( velocity.magnitude() > vlim) {
+                velocity = (velocity.multiply(1d/velocity.magnitude())).multiply( vlim);
+            }
+
+        }
 
 
-        // limit position to screen dimensions
         public void constrainPosition() {
 
             double xMin = boidRadius;
@@ -167,24 +233,19 @@ public class Main extends Application {
             double vy = velocity.getY();
 
             if( x < xMin) {
-                x = xMin;
-                vx = v;
+                x = xMax;
             }
             else if( x > xMax) {
-                x = xMax;
-                vx = -v;
+                x = xMin;
             }
 
             if( y < yMin) {
-                y = yMin;
-                vy = v;
+                y = yMax;
             }
             else if( y > yMax) {
-                y = yMax;
-                vy = -v;
+                y = yMin;
             }
 
-            // TODO: modification would be less performance consuming => find out how to modify the vector directly or create own Poin2D class
             position = new Point2D( x, y);
             velocity = new Point2D( vx, vy);
 
@@ -198,81 +259,13 @@ public class Main extends Application {
         }
     }
 
-    public static class MouseGestures {
-
-        class DragContext {
-            double x;
-            double y;
-        }
-
-        DragContext dragContext = new DragContext();
-
-        public void makeDraggable( Node node) {
-            node.setOnMousePressed( onMousePressedEventHandler);
-            node.setOnMouseDragged( onMouseDraggedEventHandler);
-            node.setOnMouseReleased( onMouseReleasedEventHandler);
-        }
-
-        EventHandler<MouseEvent> onMousePressedEventHandler = new EventHandler<MouseEvent>() {
-
-            @Override
-            public void handle(MouseEvent event) {
-
-                if( event.getSource() instanceof Circle) {
-
-                    Circle circle = ((Circle) (event.getSource()));
-
-                    dragContext.x = circle.getCenterX() - event.getSceneX();
-                    dragContext.y = circle.getCenterY() - event.getSceneY();
-
-                } else {
-
-                    Node node = ((Node) (event.getSource()));
-
-                    dragContext.x = node.getTranslateX() - event.getSceneX();
-                    dragContext.y = node.getTranslateY() - event.getSceneY();
-
-                }
-            }
-        };
-
-        EventHandler<MouseEvent> onMouseDraggedEventHandler = new EventHandler<MouseEvent>() {
-
-            @Override
-            public void handle(MouseEvent event) {
-
-                if( event.getSource() instanceof Circle) {
-
-                    Circle circle = ((Circle) (event.getSource()));
-
-                    circle.setCenterX( dragContext.x + event.getSceneX());
-                    circle.setCenterY( dragContext.y + event.getSceneY());
-
-                } else {
-
-                    Node node = ((Node) (event.getSource()));
-
-                    node.setTranslateX( dragContext.x + event.getSceneX());
-                    node.setTranslateY( dragContext.y + event.getSceneY());
-
-                }
-
-            }
-        };
-
-        EventHandler<MouseEvent> onMouseReleasedEventHandler = new EventHandler<MouseEvent>() {
-
-            @Override
-            public void handle(MouseEvent event) {
-
-            }
-        };
-
+    public static Color randomColor() {
+        int range = 220;
+        return Color.rgb((int) (rnd.nextDouble() * range), (int) (rnd.nextDouble() * range), (int) (rnd.nextDouble() * range));
     }
 
     public static void main(String[] args) {
         launch(args);
     }
+
 }
-
-
