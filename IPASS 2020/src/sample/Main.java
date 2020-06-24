@@ -16,12 +16,12 @@ import javafx.stage.Stage;
 
 public class Main extends Application {
 
-    int numBoids = 200;
+    int numBoids = 2;
+    int surroundradius = 50;
     double boidRadius = 5d;
     double boidMinDistance = boidRadius * 2d + 3;
-    double boidMaxDistance = boidRadius * 2d + 80;
-    double initialBaseVelocity = 1d;
-    double velocityLimit = 5d;
+    double initialBaseVelocity = 0d;
+    double velocityLimit = 2d;
     double movementToCenter = 0.0001;
 
     List<Boid> boids;
@@ -103,12 +103,16 @@ public class Main extends Application {
             if( boid == neighbor)
                 continue;
 
-            pcj = pcj.add( neighbor.position);
+            else if ((((neighbor.position.getX() -boid.position.getX()) <= surroundradius) || ((boid.position.getX() - neighbor.position.getX()) <= surroundradius))  && (((neighbor.position.getY() - boid.position.getY()) <= surroundradius) || ((boid.position.getY() - neighbor.position.getY()) <= surroundradius))){
+                pcj = pcj.add( neighbor.position);
+            }
+
+
 
         }
 
         if( boids.size() > 1) {
-            double div = 1d / (boids.size() - 10);
+            double div = 1d / (boids.size() - 1);
             pcj = pcj.multiply( div);
         }
 
@@ -126,6 +130,7 @@ public class Main extends Application {
 
             if( boid == neighbor)
                 continue;
+
 
             double distance = (neighbor.position.subtract(boid.position)).magnitude();
 
@@ -149,16 +154,21 @@ public class Main extends Application {
             if( boid == neighbor)
                 continue;
 
-            pvj = pvj.add( neighbor.velocity);
+
+            else if ((((neighbor.position.getX() -boid.position.getX()) <= surroundradius) || ((boid.position.getX() - neighbor.position.getX()) <= surroundradius))  && (((neighbor.position.getY() - boid.position.getY()) <= surroundradius) || ((boid.position.getY() - neighbor.position.getY()) <= surroundradius))){
+                pvj = pvj.add( neighbor.velocity);
+
+            }
+
 
         }
 
         if( boids.size() > 1) {
-            double div = 1d / (boids.size() - 1);
+            double div = 1d / (boids.size() - 4);
             pvj = pvj.multiply( div);
         }
 
-        pvj = (pvj.subtract(boid.velocity)).multiply(0.0625); // 0.125 = 1/8
+        pvj = (pvj.subtract(boid.velocity)).multiply(0.000625); // 0.125 = 1/8
 
         return pvj;
     }
@@ -245,6 +255,7 @@ public class Main extends Application {
             else if( y > yMax) {
                 y = yMin;
             }
+
 
             position = new Point2D( x, y);
             velocity = new Point2D( vx, vy);
