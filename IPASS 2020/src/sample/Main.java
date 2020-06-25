@@ -16,12 +16,12 @@ import javafx.stage.Stage;
 
 public class Main extends Application {
 
-    int numBoids = 2;
+    int numBoids = 200;
     int surroundradius = 50;
     double boidRadius = 5d;
     double boidMinDistance = boidRadius * 2d + 3;
     double initialBaseVelocity = 0d;
-    double velocityLimit = 2d;
+    double velocityLimit = 1.5d;
     double movementToCenter = 0.0001;
 
     List<Boid> boids;
